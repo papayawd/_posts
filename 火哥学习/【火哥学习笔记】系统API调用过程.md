@@ -1,10 +1,4 @@
----
-title: 【火哥学习笔记】系统API调用过程
-date: 2021-07-17 22:04:46
-tags: windows
----
 
-​	<!-- more -->
 
 ## sysenter 快速系统调用
 

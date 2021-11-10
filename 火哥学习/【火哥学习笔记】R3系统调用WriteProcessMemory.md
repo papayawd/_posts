@@ -1,10 +1,4 @@
----
-title: 【火哥学习笔记】R3系统调用WriteProcessMemory
-date: 2021-07-16 16:57:48
-tags: windows
----
 
-​	<!-- more -->
 
 被修改的程序
 
