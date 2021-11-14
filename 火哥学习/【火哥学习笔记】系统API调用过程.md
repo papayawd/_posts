@@ -103,7 +103,7 @@ nt!KiFastCallEntry:
 
 `KiFastCallEntry`函数中具体汇编的逆向可以见[ntoskrnl.exe.idb]()内的注释 大概就是修改为`R0`的环境（`EIP`，`CS`，`ESP`，`SS`）
 
-这里的`esp`操作之后维护了一个`_KTRAP_FRAME`的结构 结构如下
+这里面的`esp`操作之后维护了一个`_KTRAP_FRAME`的结构 用来保存三环的数据 结构如下
 
 ```cpp
 ntdll!_KTRAP_FRAME
@@ -132,12 +132,13 @@ ntdll!_KTRAP_FRAME
    +0x058 Esi              : Uint4B
    +0x05c Ebx              : Uint4B
    +0x060 Ebp              : Uint4B
-   +0x064 ErrCode          : Uint4B
-   +0x068 Eip              : Uint4B
+   +0x064 ErrCode          : Uint4B          // int x进入R0的 走 _KiTrap 的大部分 从这里开始构造 _KTRAP_FRAME
+       									  // 系统API调用走KiSystemService的 从这里开始构造 _KTRAP_FRAME
+   +0x068 Eip              : Uint4B 
    +0x06c SegCs            : Uint4B
    +0x070 EFlags           : Uint4B
    +0x074 HardwareEsp      : Uint4B
-   +0x078 HardwareSegSs    : Uint4B
+   +0x078 HardwareSegSs    : Uint4B          // 系统API调用走KiFastCallEntry的 从这里开始构造 _KTRAP_FRAME
    +0x07c V86Es            : Uint4B
    +0x080 V86Ds            : Uint4B
    +0x084 V86Fs            : Uint4B
@@ -176,7 +177,7 @@ kd> dq 8003f400 + 2e*8
     
 kd> u 80542611
 nt!KiSystemService:
-80542611 6a00            push    0
+80542611 6a00            push    0              //  ErrCode    
 80542613 55              push    ebp
 80542614 53              push    ebx
 80542615 56              push    esi
