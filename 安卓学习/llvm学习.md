@@ -6,7 +6,7 @@
 
 下载project.src源码，使用Clion打开llvm目录下的CMakeLists.txt，然后cmake选项里面的参数如下填写
 
-![](./picture/截屏2022-02-13 21.17.19.png)
+![](./picture/截屏2022-02-1321.17.19.png)
 
 ```shell
 -G Ninja -DLLVM_ENABLE_PROJECTS="clang;lldb;libcxx;libcxxabi" # 工具之间用 ; 隔开
@@ -48,8 +48,8 @@ clang hello.bc -o hello     # 最后用clang就得到最终的可执行文件  �
 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk /Users/liuxingyu/Desktop/vscode/android/a.c -o /Users/liuxingyu/Desktop/vscode/android/a_clion # 最前面的clang需要省略
 ```
 
-![](./picture/截屏2022-02-14 12.58.54.png)
+![](./picture/截屏2022-02-1412.58.54.png)
 
 之后点击调试就可以断下来了，效果如下
 
-![](./picture/MacPic2022-02-14 13.04.25.png)
+![](./picture/MacPic2022-02-1413.04.25.png)
