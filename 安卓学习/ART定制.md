@@ -79,6 +79,15 @@ Android Studio导入AOSP源码：http://wuxiaolong.me/2018/08/15/AOSP3/
 
 **使用repo的时候需要使用python3.6以上，但是生成gen的时候需要使用python2，否则报错SyntaxError无法正常生成**
 
+编译idegen部分需要安装openjdk和openjre
+
+```shell
+sudo apt install openjdk-8-jdk
+sudo apt install openjdk-8-jre-headless
+```
+
+
+
 java层的类的native的实现文件是类引用中 点换成下划线，比如
 
 ```

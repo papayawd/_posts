@@ -18,6 +18,8 @@
 
 一切修改好保存之后，Clion回自动重新生成cmake-build-degub等文件夹，这时候就不用Clion，直接终端用Ninja编译即可。
 
+ubuntu下编译需要有[足够的swap space](https://my.oschina.net/u/4266515/blog/3329968)，或者线程弄少一点（最好是1）
+
 不清楚为什么生成的clang没有SDK，需要手动指定，这里使用xcode的，路径一般固定
 
 ```shell
@@ -228,4 +230,179 @@ Instruction * tbb= fi->getTerminator(); // 上面这个的返回类型改为Inst
 之后使用`ninja LLVMObfuscation`编译ollvm，再`ninja clang`重新编译clang使得clang可以支持Obfuscation
 
 ollvm的[特性手册](https://github.com/obfuscator-llvm/obfuscator/wiki/Features) 
+
+### 字符串加密PASS
+
+**前置知识**：全局变量的符号都是以`@`开头，字符串作为全局变量一般是以`@.str`开头 
+
+```cpp
+// Entry.cpp 添加如下 注册参数
+static cl::opt<bool> StrObf("strobf", cl::init(false),
+                           cl::desc("Enable basic block splitting"));
+```
+
+
+
+```h
+// StringObf.h
+// 模仿其他功能的.h头文件即可 
+#ifndef OUTPASS_STRINGOBF_H
+#define OUTPASS_STRINGOBF_H
+// LLVM include
+#include "llvm/Pass.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/ADT/Statistic.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/CryptoUtils.h"
+// Namespace
+using namespace llvm;
+using namespace std;
+namespace llvm {
+    Pass *createStringObf (bool flag);
+}
+#endif //OUTPASS_STRINGOBF_H
+
+```
+
+
+
+```cpp
+// StringObf.cpp
+#include "llvm/Transforms/Obfuscation/StringObf.h"
+#include "llvm/Transforms/Obfuscation/Utils.h"
+using namespace llvm;
+namespace {
+    struct StringObf : public FunctionPass {
+        static char ID; // Pass identification, replacement for typeid
+        bool flag;
+        StringObf() : FunctionPass(ID) {}
+        StringObf(bool flag) : FunctionPass(ID) {
+            this->flag = flag;
+        }
+        bool runOnFunction(Function &F) {  // 所有操作写在这个函数里面
+            if (toObfuscate(flag, &F, "strobf")) { // 当加入了-strobf参数
+                for (BasicBlock &basicBlock: F) { // block 块
+//                    errs() << basicBlock.getName() << "\n";
+                    for (Instruction &instruction: basicBlock) { // Ins 指令 
+//                        errs() << instruction << "\n";
+                        for (Value *op: instruction.operands()) { // OP 指令中的每个部分 
+                            Value *stripPtr = op->stripPointerCasts();
+                            if (stripPtr->getName().contains(".str")) { // find op which use "@.str" 
+                                // NOTE: 这里使用"@.str"匹配不到
+                                errs() << *op << "\n";
+                                GlobalVariable *GV = dyn_cast<GlobalVariable>(stripPtr);
+                                if (GV) {
+                                    ConstantDataSequential *CDS =
+                                            dyn_cast<ConstantDataSequential>(GV->getInitializer());
+                                    if (CDS) {
+                                        std::string str = CDS->getRawDataValues().str();
+                                        errs() << "str: " << str << "\n";
+
+                                        // encrypt 加密
+                                        uint8_t xor_key = llvm::cryptoutils->get_uint8_t();
+                                        for (int i = 0; i < str.size(); i++) {
+                                            str[i] = str[i] ^ xor_key;
+                                        }
+
+
+                                        AllocaInst *allocaInst_str = new AllocaInst(
+                                                ArrayType::get(Type::getInt8Ty(F.getContext()), str.size()), 0,
+                                                nullptr, 1, Twine(stripPtr->getName() + ".array"), &instruction);
+									// 申请数组指令 
+                                        // ** 函数中有 &instruction 都会生成指令并且默认插入在 &instruction 之前 **
+                                        // %.str.array = alloca [7 x i8], align 1
+
+                                        Twine *twine_bitcast = new Twine(
+                                                stripPtr->getName() + ".bitcast"); // make twine
+                                        BitCastInst *bitCastInst_str = new BitCastInst(allocaInst_str,
+                                                                                       Type::getInt8PtrTy(
+                                                                                               F.getParent()->getContext()),
+                                                                                       twine_bitcast->str(),
+                                                                                       &instruction);
+                                        // bitcast 才是可以直接使用的item
+                                        // %.str.bitcast = bitcast [7 x i8]* %.str.array to i8*
+
+                                        ConstantInt *constantInt_xor_key = ConstantInt::get(
+                                                Type::getInt8Ty(F.getContext()), xor_key); // make const -- xor_key
+                                        // 申请 xor_key 常量
+
+
+                                        AllocaInst *allocaInst_xor_key = new AllocaInst(Type::getInt8Ty(F.getContext()),
+                                                                                        0,
+                                                                                        nullptr, 1,
+                                                                                        Twine(stripPtr->getName() +
+                                                                                              ".key"), &instruction);
+                                        // %.str.key = alloca i8, align 1
+                                        // 为xor_key常量申请空间
+                                        StoreInst *storeInst_xor_key = new StoreInst(constantInt_xor_key,
+                                                                                     allocaInst_xor_key);
+                                        storeInst_xor_key->insertAfter(allocaInst_xor_key);
+                                        // StoreInst中没有 &instruction 不会插入指令 需要主动调用函数来插入指令
+                                        // store i8 -116, i8* %.str.key
+                                        // 储存常量到空间中
+
+                                        LoadInst *loadInst_xor_key = new LoadInst(allocaInst_xor_key, ""); 
+                                        // name = null  name为空则从0开始命名 %0 %1 %2 %3 ...
+                                        loadInst_xor_key->insertAfter(storeInst_xor_key);
+                                        // %0 = load i8, i8* %.str.key
+                                        // 加载xor_key  其实可以直接使用常量 这样做是为了不被IDA优化  
+
+                                        for (int i = 0; i < str.size(); i++) {
+
+                                            ConstantInt *index = ConstantInt::get(Type::getInt8Ty(F.getContext()), i); 
+                                            // 申请index为常量
+                                            GetElementPtrInst *getElementPtrInst = GetElementPtrInst::CreateInBounds(
+                                                    bitCastInst_str, index);
+                                            getElementPtrInst->insertBefore(&instruction);
+                                            //  取出数组中当前index的元素 
+                                            // foreach array element
+                                            // %1 = getelementptr inbounds i8, i8* %.str.bitcast, i8 0
+                                            // %3 = getelementptr inbounds i8, i8* %.str.bitcast, i8 1
+                                            // %5 = getelementptr inbounds i8, i8* %.str.bitcast, i8 2   # 0,1,2 is index
+                                            // ....
+
+                                            ConstantInt *enc_ch = ConstantInt::get(Type::getInt8Ty(F.getContext()),
+                                                                                   str[i]);
+                                            // 申请被加密的str[i]作为常量
+                                            BinaryOperator *xor_inst = BinaryOperator::CreateXor(enc_ch,
+                                                                                                 loadInst_xor_key);
+                                            // 这里就是直接使用常量了
+                                            xor_inst->insertAfter(getElementPtrInst);
+                                            // %2 = xor i8 -4, %0
+
+                                            StoreInst *storeInst = new StoreInst(xor_inst, getElementPtrInst);
+                                            storeInst->insertAfter(xor_inst);
+                                            // 保存解密后的字符
+                                            // store i8 %2, i8* %1
+                                            // until now decrypt over
+                                        }
+                                        op->replaceAllUsesWith(bitCastInst_str); // use bitcast replace all place which use whis op
+                                        // 不需要引用全局变量的op了 直接使用bitcast作为新的op
+                                        GV->eraseFromParent(); // remove global values
+
+                                    }
+                                }
+                            }
+                        }
+                        errs() << "\n";
+                    }
+                }
+            }
+            return false;
+        }
+    };
+}
+
+char StringObf::ID = 0;
+static RegisterPass<StringObf> X("stringobf", "string obf");
+
+Pass *llvm::createStringObf(bool flag) {
+    return new StringObf(flag);
+}
+```
+
+
 
