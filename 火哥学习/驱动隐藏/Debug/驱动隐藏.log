@@ -1,0 +1,17 @@
+﻿  Building '驱动隐藏' with toolset 'WindowsKernelModeDriver10.0' and the 'Desktop' target platform.
+  main.c
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(20,10): warning C4201: 使用了非标准扩展: 无名称的结构/联合
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(21,6): warning C4201: 使用了非标准扩展: 无名称的结构/联合
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(25,10): warning C4201: 使用了非标准扩展: 无名称的结构/联合
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(28,10): warning C4201: 使用了非标准扩展: 无名称的结构/联合
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(29,6): warning C4201: 使用了非标准扩展: 无名称的结构/联合
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(94,44): warning C4133: “=”: 从“PLDR_DATA_TABLE_ENTRY”到“_LIST_ENTRY *”的类型不兼容
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(95,44): warning C4133: “=”: 从“PLDR_DATA_TABLE_ENTRY”到“_LIST_ENTRY *”的类型不兼容
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(92,1): warning C4133: “初始化”: 从“_LIST_ENTRY *”到“PLDR_DATA_TABLE_ENTRY”的类型不兼容
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(93,1): warning C4133: “初始化”: 从“_LIST_ENTRY *”到“PLDR_DATA_TABLE_ENTRY”的类型不兼容
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(85,62): warning C4100: “pReg”: 未引用的形参
+C:\Users\Administrator\Desktop\驱动隐藏\main.c(91,27): warning C4189: “pCur”: 局部变量已初始化但不引用
+  驱动隐藏.vcxproj -> C:\Users\Administrator\Desktop\驱动隐藏\Debug\驱动隐藏.sys
+  Done Adding Additional Store
+  Successfully signed: C:\Users\Administrator\Desktop\\Debug\.sys
+  
